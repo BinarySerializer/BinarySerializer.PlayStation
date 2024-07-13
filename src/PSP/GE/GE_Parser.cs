@@ -61,11 +61,14 @@ namespace BinarySerializer.PlayStation.PSP
                         parse = false;
                         break;
                     case GE_CommandType.RET:
-                        if (CallStack.TryPop(out newAddress))
+                        if (CallStack.Count > 0)
                         {
-                            s.Goto(newAddress);
+                            s.Goto(CallStack.Pop());
                         }
-                        else parse = false;
+                        else
+                        {
+                            parse = false;
+                        }
                         break;
                     case GE_CommandType.CALL:
                         CallStack.Push(StartPointer);
