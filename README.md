@@ -1,0 +1,2 @@
+# BinarySerializer.PlayStation
+BinarySerializer.PlayStation is an extension library to [BinarySerializer](https://github.com/BinarySerializer/BinarySerializer) for serializing PlayStation formats. Currently it supports PS1, PS2 and PSP formats.
