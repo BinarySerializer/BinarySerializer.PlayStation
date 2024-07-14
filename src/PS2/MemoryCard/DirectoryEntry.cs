@@ -1,4 +1,6 @@
-﻿namespace BinarySerializer.PlayStation.PS2.MemoryCard
+﻿using System;
+
+namespace BinarySerializer.PlayStation.PS2.MemoryCard
 {
     public class DirectoryEntry : BinarySerializable
     {
@@ -17,6 +19,47 @@
         public byte[] Reserved3 { get; set; }
 
         public DirectoryEntry[] SubDirectories { get; set; }
+
+        private int GetFatEntry(SerializerObject s, int cluster)
+        {
+            int indirectFatEntriesPerCluster = Pre_MemoryCard.ClusterSize / 4;
+            int fatOffset = cluster % indirectFatEntriesPerCluster;
+            int indirectIndex = cluster / indirectFatEntriesPerCluster;
+            int indirectOffset = indirectIndex % indirectFatEntriesPerCluster;
+            int dblIndirectIndex = indirectIndex / indirectFatEntriesPerCluster;
+            int indirectClusterIndex = Pre_MemoryCard.SuperBlock.IndirectFatClusters[dblIndirectIndex];
+
+            int fatClusterOffset = indirectClusterIndex * Pre_MemoryCard.ClusterSize + indirectOffset * 4;
+            s.Goto(Pre_MemoryCard.Offset + fatClusterOffset);
+            int fatClusterIndex = s.Serialize<int>(default, "FatClusterIndex");
+
+            int fatEntryOffset = fatClusterIndex * Pre_MemoryCard.ClusterSize + fatOffset * 4;
+            s.Goto(Pre_MemoryCard.Offset + fatEntryOffset);
+            return s.Serialize<int>(default, "FatEntry");
+        }
+
+        public byte[] ReadFile(SerializerObject s)
+        {
+            byte[] fileBuffer = new byte[Length];
+
+            int clusterSize = Pre_MemoryCard.ClusterSize;
+            int offset = 0;
+            int cluster = Cluster;
+
+            while (offset < fileBuffer.Length)
+            {
+                s.Goto(Pre_MemoryCard.GetPointer(cluster, true));
+                int readLength = Math.Min(fileBuffer.Length - offset, clusterSize);
+                byte[] data = s.SerializeArray<byte>(default, readLength, name: "FileData");
+                Array.Copy(data, 0, fileBuffer, offset, readLength);
+                offset += readLength;
+
+                int fatEntry = GetFatEntry(s, cluster);
+                cluster = fatEntry & 0x7FFFFFFF;
+            }
+
+            return fileBuffer;
+        }
 
         public override void SerializeImpl(SerializerObject s)
         {
@@ -49,21 +92,7 @@
                     // TODO: This won't work for writing
                     if (i % dirsPerCluster == 0 && i != 0)
                     {
-                        int indirectFatEntriesPerCluster = Pre_MemoryCard.ClusterSize / 4;
-                        int fatOffset = cluster % indirectFatEntriesPerCluster;
-                        int indirectIndex = cluster / indirectFatEntriesPerCluster;
-                        int indirectOffset = indirectIndex % indirectFatEntriesPerCluster;
-                        int dblIndirectIndex = indirectIndex / indirectFatEntriesPerCluster;
-                        int indirectClusterIndex = Pre_MemoryCard.SuperBlock.IndirectFatClusters[dblIndirectIndex];
-
-                        int fatClusterOffset = indirectClusterIndex * Pre_MemoryCard.ClusterSize + indirectOffset * 4;
-                        s.Goto(Pre_MemoryCard.Offset + fatClusterOffset);
-                        int fatClusterIndex = s.Serialize<int>(default, "FatClusterIndex");
-                        
-                        int fatEntryOffset = fatClusterIndex * Pre_MemoryCard.ClusterSize + fatOffset * 4;
-                        s.Goto(Pre_MemoryCard.Offset + fatEntryOffset);
-                        int fatEntry = s.Serialize<int>(default, "FatEntry");
-
+                        int fatEntry = GetFatEntry(s, cluster);
                         cluster = fatEntry & 0x7FFFFFFF;
                     }
 
