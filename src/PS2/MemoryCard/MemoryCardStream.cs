@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.IO;
+using System.Text;
 
 namespace BinarySerializer.PlayStation.PS2.MemoryCard
 {
@@ -16,6 +17,13 @@ namespace BinarySerializer.PlayStation.PS2.MemoryCard
 
             using (Reader reader = new(baseStream, leaveOpen: true))
             {
+                // Make sure the card is valid and formatted
+                baseStream.Position = 0;
+                string magic = reader.ReadString(28, Encoding.ASCII);
+
+                if (magic != "Sony PS2 Memory Card Format ")
+                    throw new Exception("The memory card file is not a valid formatted memory card file");
+
                 // Get the page size
                 baseStream.Position = 0x28;
                 PageDataSize = reader.ReadInt16();
