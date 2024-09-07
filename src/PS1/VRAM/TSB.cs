@@ -7,7 +7,7 @@ namespace BinarySerializer.PlayStation.PS1
         // See http://hitmen.c02.at/files/docs/psx/psx.pdf page 37
         public byte TX { get; set; } // value * 64
         public byte TY { get; set; } // value * 256
-        public byte ABR { get; set; } // Semi transparency mode
+        public SemiTransparencyRate ABR { get; set; }
         public TexturePageTP TP { get; set; }
 
         public override void SerializeImpl(SerializerObject s)
@@ -16,7 +16,7 @@ namespace BinarySerializer.PlayStation.PS1
             {
                 TX = b.SerializeBits<byte>(TX, 4, name: nameof(TX));
                 TY = b.SerializeBits<byte>(TY, 1, name: nameof(TY));
-                ABR = b.SerializeBits<byte>(ABR, 2, name: nameof(ABR));
+                ABR = b.SerializeBits<SemiTransparencyRate>(ABR, 2, name: nameof(ABR));
                 TP = b.SerializeBits<TexturePageTP>(TP, 2, name: nameof(TP));
             });
         }
